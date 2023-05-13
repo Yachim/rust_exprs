@@ -3,7 +3,7 @@ use std::ops::Deref;
 use regex::Regex;
 
 const WHITESPACE_REGEX: &str = r"^\s+";
-const OPERATOR_REGEX: &str = r"^(\+|-|\*|\/|&&|\|\||!|<=|>=|<|>|=)";
+const OPERATOR_REGEX: &str = r"^(\+|-|\*|\/|&&|\|\||<=|>=|<|>|=)";
 const NUMBER_REGEX: &str = r"^(\d+(?:\.\d+)?)";
 const VARIABLE_REGEX: &str = r"^\{(.+?)\}";
 const PARENTHESIS_REGEX: &str = r"^(\(|\))";
