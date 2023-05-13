@@ -8,7 +8,7 @@ const PARENTHESIS_REGEX: &str = r"^(\(|\))";
 
 /// each member contains a regex match
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum TokenType {
+pub enum TokenType {
     Whitespace,
     Operator,
     Number,
@@ -16,10 +16,10 @@ enum TokenType {
     Parenthesis,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-struct Token {
-    token_type: TokenType,
-    value: String,
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Token {
+    pub token_type: TokenType,
+    pub value: String,
 }
 
 pub type TokenList = Vec<Token>;
@@ -80,7 +80,7 @@ impl Tokenizer {
                     None
                 })
                 .expect(&format!(
-                    "Tokenizer: no token matched\nindex: `{index}`\nstring: `{str}`\nsubstring: `{}`",
+                    "No token matched\nindex: `{index}`\nstring: `{str}`\nsubstring: `{}`.",
                     &str[index..]
                 ));
 
