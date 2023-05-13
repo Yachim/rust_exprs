@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use regex::Regex;
 
 const WHITESPACE_REGEX: &str = r"^\s+";

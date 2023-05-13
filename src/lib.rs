@@ -1,5 +1,5 @@
+mod ast;
 pub mod expression;
-mod parser;
 mod tokenizer;
 
 pub fn add(left: usize, right: usize) -> usize {
