@@ -1,13 +1,10 @@
+use crate::tokenizer::{TokenList, TokenType};
 use std::collections::VecDeque;
-
-use crate::tokenizer::Token;
-
-use super::tokenizer::{TokenList, TokenType};
 
 pub type RPN = Vec<Value>;
 
-#[derive(PartialEq, Eq, Debug)]
-enum OperatorType {
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub enum OperatorType {
     /// +
     Plus,
 
@@ -82,16 +79,72 @@ impl OperatorType {
             Self::Times | Self::Divide => 6,
         }
     }
+
+    pub fn eval_nums(&self, first: f32, second: f32) -> f32 {
+        match self {
+            Self::LeftParenthesis | Self::RightParenthesis => {
+                unreachable!("OperatorType parenthesis")
+            }
+
+            Self::Plus => first + second,
+            Self::Minus => first - second,
+            Self::Times => first * second,
+            Self::Divide => first / second,
+            Self::And | Self::Or => {
+                panic!("Method `eval_conditional` should be used instead.")
+            }
+            Self::LT | Self::LE | Self::GT | Self::GE | Self::Eq => {
+                panic!("Method `eval_comparison` should be used instead.")
+            }
+        }
+    }
+
+    pub fn eval_conditional(&self, first: bool, second: bool) -> bool {
+        match self {
+            Self::LeftParenthesis | Self::RightParenthesis => {
+                unreachable!("OperatorType parenthesis")
+            }
+
+            Self::Plus | Self::Minus | Self::Times | Self::Divide => {
+                panic!("Method `eval_nums` should be used instead.")
+            }
+            Self::And => first && second,
+            Self::Or => first || second,
+            Self::LT | Self::LE | Self::GT | Self::GE | Self::Eq => {
+                panic!("Method `eval_comparison` should be used instead.")
+            }
+        }
+    }
+
+    pub fn eval_comparison(&self, first: f32, second: f32) -> bool {
+        match self {
+            Self::LeftParenthesis | Self::RightParenthesis => {
+                unreachable!("OperatorType parenthesis")
+            }
+
+            Self::Plus | Self::Minus | Self::Times | Self::Divide => {
+                panic!("Method `eval_nums` should be used instead.")
+            }
+            Self::And | Self::Or => {
+                panic!("Method `eval_conditional` should be used instead.")
+            }
+            Self::LT => first < second,
+            Self::LE => first <= second,
+            Self::GT => first > second,
+            Self::GE => first >= second,
+            Self::Eq => first == second,
+        }
+    }
 }
 
-#[derive(Debug, PartialEq)]
-enum Value {
+#[derive(Debug, PartialEq, Clone)]
+pub enum Value {
     Operator(OperatorType),
     Number(f32),
     Variable(String),
 }
 
-struct Parser {}
+pub struct Parser {}
 
 impl Parser {
     pub fn tokens_to_rpn(tokens: TokenList) -> RPN {
@@ -167,7 +220,7 @@ mod tests {
 
     #[test]
     fn test_1() {
-        // "1 + 2" -> "1 2 +"
+        // "1 + 4/2" -> "1 4 2 / +"
         let tokens: TokenList = vec![
             Token {
                 value: "1".to_string(),
@@ -175,6 +228,14 @@ mod tests {
             },
             Token {
                 value: "+".to_string(),
+                token_type: TokenType::Operator,
+            },
+            Token {
+                value: "4".to_string(),
+                token_type: TokenType::Number,
+            },
+            Token {
+                value: "/".to_string(),
                 token_type: TokenType::Operator,
             },
             Token {
@@ -188,7 +249,9 @@ mod tests {
             rpn,
             vec![
                 Value::Number(1.0),
+                Value::Number(4.0),
                 Value::Number(2.0),
+                Value::Operator(OperatorType::Divide),
                 Value::Operator(OperatorType::Plus)
             ]
         );
@@ -451,5 +514,45 @@ mod tests {
                 Value::Operator(OperatorType::And),
             ]
         );
+    }
+
+    #[test]
+    fn test_eval_nums() {
+        assert_eq!(OperatorType::Plus.eval_nums(2.0, 3.0), 5.0);
+        assert_eq!(OperatorType::Minus.eval_nums(5.0, 3.0), 2.0);
+        assert_eq!(OperatorType::Times.eval_nums(2.0, 3.0), 6.0);
+        assert_eq!(OperatorType::Divide.eval_nums(6.0, 3.0), 2.0);
+    }
+
+    #[test]
+    fn test_eval_comparison() {
+        assert_eq!(OperatorType::LT.eval_comparison(2.0, 3.0), true);
+        assert_eq!(OperatorType::LT.eval_comparison(5.0, 3.0), false);
+
+        assert_eq!(OperatorType::LE.eval_comparison(3.0, 3.0), true);
+        assert_eq!(OperatorType::LE.eval_comparison(5.0, 3.0), false);
+
+        assert_eq!(OperatorType::GT.eval_comparison(6.0, 3.0), true);
+        assert_eq!(OperatorType::GT.eval_comparison(1.0, 3.0), false);
+
+        assert_eq!(OperatorType::GE.eval_comparison(3.0, 3.0), true);
+        assert_eq!(OperatorType::GE.eval_comparison(2.0, 3.0), false);
+
+        assert_eq!(OperatorType::Eq.eval_comparison(3.0, 3.0), true);
+        assert_eq!(OperatorType::Eq.eval_comparison(4.0, 3.0), false);
+        assert_eq!(OperatorType::Eq.eval_comparison(2.0, 3.0), false);
+    }
+
+    #[test]
+    fn test_eval_conditional() {
+        assert_eq!(OperatorType::And.eval_conditional(true, true), true);
+        assert_eq!(OperatorType::And.eval_conditional(true, false), false);
+        assert_eq!(OperatorType::And.eval_conditional(false, true), false);
+        assert_eq!(OperatorType::And.eval_conditional(false, false), false);
+
+        assert_eq!(OperatorType::Or.eval_conditional(true, true), true);
+        assert_eq!(OperatorType::Or.eval_conditional(true, false), true);
+        assert_eq!(OperatorType::Or.eval_conditional(false, true), true);
+        assert_eq!(OperatorType::Or.eval_conditional(false, false), false);
     }
 }
