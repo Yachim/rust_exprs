@@ -34,7 +34,7 @@ pub struct Tokenizer {
 }
 
 impl Tokenizer {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             matchers: vec![
                 Matcher {
@@ -61,7 +61,7 @@ impl Tokenizer {
         }
     }
 
-    fn tokenize(&self, str: &str) -> TokenList {
+    pub fn tokenize(&self, str: &str) -> TokenList {
         let mut tokens: TokenList = vec![];
 
         let mut index = 0;

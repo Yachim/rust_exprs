@@ -144,76 +144,70 @@ pub enum Value {
     Variable(String),
 }
 
-pub struct Parser {}
+pub fn tokens_to_rpn(tokens: TokenList) -> RPN {
+    // queue - last index in, 0th index out
+    let mut token_queue: RPN = vec![];
+    // stack - 0th index in, 0th index out
+    let mut operator_stack: VecDeque<OperatorType> = VecDeque::new();
 
-impl Parser {
-    pub fn tokens_to_rpn(tokens: TokenList) -> RPN {
-        // queue - last index in, 0th index out
-        let mut token_queue: RPN = vec![];
-        // stack - 0th index in, 0th index out
-        let mut operator_stack: VecDeque<OperatorType> = VecDeque::new();
-
-        tokens.iter().for_each(|token| match token.token_type {
-            TokenType::Number => token_queue.push(Value::Number(
-                token.value.parse().expect("Failed to parse float"),
-            )),
-            TokenType::Variable => token_queue.push(Value::Variable(token.value.clone())),
-            TokenType::Parenthesis => match token.value.as_str() {
-                "(" => operator_stack.push_front(OperatorType::LeftParenthesis),
-                ")" => {
-                    while operator_stack.len() > 0
-                        && operator_stack[0] != OperatorType::LeftParenthesis
-                    {
-                        token_queue.push(Value::Operator(operator_stack.pop_front().unwrap()))
-                    }
-                    assert_eq!(
-                        operator_stack[0],
-                        OperatorType::LeftParenthesis,
-                        "No matching left parenthesis."
-                    );
-
-                    operator_stack.pop_front();
-                }
-                _ => unreachable!(
-                    "Token of type parenthesis has invalid value. Value: {}.",
-                    token.value
-                ),
-            },
-            TokenType::Operator => {
-                let op = OperatorType::from_str(token.value.as_str());
-
-                while operator_stack.len() > 0
-                    && operator_stack[0] != OperatorType::LeftParenthesis
-                    && operator_stack[0].get_priority() >= op.get_priority()
+    tokens.iter().for_each(|token| match token.token_type {
+        TokenType::Number => token_queue.push(Value::Number(
+            token.value.parse().expect("Failed to parse float"),
+        )),
+        TokenType::Variable => token_queue.push(Value::Variable(token.value.clone())),
+        TokenType::Parenthesis => match token.value.as_str() {
+            "(" => operator_stack.push_front(OperatorType::LeftParenthesis),
+            ")" => {
+                while operator_stack.len() > 0 && operator_stack[0] != OperatorType::LeftParenthesis
                 {
-                    token_queue.push(Value::Operator(operator_stack.pop_front().unwrap()));
+                    token_queue.push(Value::Operator(operator_stack.pop_front().unwrap()))
                 }
+                assert_eq!(
+                    operator_stack[0],
+                    OperatorType::LeftParenthesis,
+                    "No matching left parenthesis."
+                );
 
-                operator_stack.push_front(op);
+                operator_stack.pop_front();
             }
-            TokenType::Whitespace => unimplemented!("Whitespace in token list"),
-        });
+            _ => unreachable!(
+                "Token of type parenthesis has invalid value. Value: {}.",
+                token.value
+            ),
+        },
+        TokenType::Operator => {
+            let op = OperatorType::from_str(token.value.as_str());
 
-        while operator_stack.len() > 0 {
-            let op = operator_stack.pop_front().unwrap();
+            while operator_stack.len() > 0
+                && operator_stack[0] != OperatorType::LeftParenthesis
+                && operator_stack[0].get_priority() >= op.get_priority()
+            {
+                token_queue.push(Value::Operator(operator_stack.pop_front().unwrap()));
+            }
 
-            assert_ne!(
-                op,
-                OperatorType::LeftParenthesis,
-                "Left paranthesis on top of operator stack."
-            );
-            token_queue.push(Value::Operator(op));
+            operator_stack.push_front(op);
         }
+        TokenType::Whitespace => unimplemented!("Whitespace in token list"),
+    });
 
-        token_queue
+    while operator_stack.len() > 0 {
+        let op = operator_stack.pop_front().unwrap();
+
+        assert_ne!(
+            op,
+            OperatorType::LeftParenthesis,
+            "Left paranthesis on top of operator stack."
+        );
+        token_queue.push(Value::Operator(op));
     }
+
+    token_queue
 }
 
 #[cfg(test)]
 mod tests {
-    use super::Parser;
     use crate::{
-        parser::{OperatorType, Value},
+        parser::{tokens_to_rpn, OperatorType, Value},
         tokenizer::{Token, TokenList, TokenType},
     };
     use pretty_assertions::assert_eq;
@@ -244,7 +238,7 @@ mod tests {
             },
         ];
 
-        let rpn = Parser::tokens_to_rpn(tokens);
+        let rpn = tokens_to_rpn(tokens);
         assert_eq!(
             rpn,
             vec![
@@ -283,7 +277,7 @@ mod tests {
             },
         ];
 
-        let rpn = Parser::tokens_to_rpn(tokens);
+        let rpn = tokens_to_rpn(tokens);
         assert_eq!(
             rpn,
             vec![
@@ -330,7 +324,7 @@ mod tests {
             },
         ];
 
-        let rpn = Parser::tokens_to_rpn(tokens);
+        let rpn = tokens_to_rpn(tokens);
         assert_eq!(
             rpn,
             vec![
@@ -385,7 +379,7 @@ mod tests {
             },
         ];
 
-        let rpn = Parser::tokens_to_rpn(tokens);
+        let rpn = tokens_to_rpn(tokens);
         assert_eq!(
             rpn,
             vec![
@@ -426,7 +420,7 @@ mod tests {
             },
         ];
 
-        let rpn = Parser::tokens_to_rpn(tokens);
+        let rpn = tokens_to_rpn(tokens);
         assert_eq!(
             rpn,
             vec![
@@ -497,7 +491,7 @@ mod tests {
             },
         ];
 
-        let rpn = Parser::tokens_to_rpn(tokens);
+        let rpn = tokens_to_rpn(tokens);
         assert_eq!(
             rpn,
             vec![

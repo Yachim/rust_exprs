@@ -9,6 +9,24 @@ pub enum EmitResult {
     Bool(bool),
 }
 
+impl Into<bool> for EmitResult {
+    fn into(self) -> bool {
+        match self {
+            Self::Bool(val) => val,
+            Self::Number(_) => panic!("Value is number. Not a boolean."),
+        }
+    }
+}
+
+impl Into<f32> for EmitResult {
+    fn into(self) -> f32 {
+        match self {
+            Self::Number(val) => val,
+            Self::Bool(_) => panic!("Value is boolean. Not a number."),
+        }
+    }
+}
+
 pub struct Emitter {
     rpn: RPN,
     no_var_rpn: Option<RPN>,
