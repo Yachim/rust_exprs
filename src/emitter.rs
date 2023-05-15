@@ -9,20 +9,20 @@ pub enum EmitResult {
     Bool(bool),
 }
 
-impl Into<bool> for EmitResult {
-    fn into(self) -> bool {
-        match self {
-            Self::Bool(val) => val,
-            Self::Number(_) => panic!("Value is number. Not a boolean."),
+impl From<EmitResult> for bool {
+    fn from(value: EmitResult) -> Self {
+        match value {
+            EmitResult::Bool(val) => val,
+            EmitResult::Number(_) => panic!("value is number, not a boolean"),
         }
     }
 }
 
-impl Into<f32> for EmitResult {
-    fn into(self) -> f32 {
-        match self {
-            Self::Number(val) => val,
-            Self::Bool(_) => panic!("Value is boolean. Not a number."),
+impl From<EmitResult> for f32 {
+    fn from(value: EmitResult) -> Self {
+        match value {
+            EmitResult::Number(val) => val,
+            EmitResult::Bool(_) => panic!("value is boolean, not a number"),
         }
     }
 }
@@ -31,6 +31,28 @@ impl Into<f32> for EmitResult {
 pub struct Emitter {
     rpn: RPN,
     no_var_rpn: Option<RPN>,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum EvalError {
+    ContainsVariables,
+    NotEnoughValues,
+    TooMuchValues,
+}
+
+impl std::fmt::Display for EvalError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EvalError::ContainsVariables => {
+                write!(
+                    f,
+                    "RPN cannot contain variables, use `bind_variables` first"
+                )
+            }
+            EvalError::NotEnoughValues => write!(f, "not enough values entered"),
+            EvalError::TooMuchValues => write!(f, "too much values entered"),
+        }
+    }
 }
 
 impl Emitter {
@@ -50,29 +72,31 @@ impl Emitter {
     }
 
     /// replaces variable values with numbers
-    pub fn bind_variables(&mut self, var_map: &VariableMap) {
+    pub fn bind_variables(&mut self, var_map: &VariableMap) -> Result<(), String> {
         self.no_var_rpn = Some(
             self.rpn
                 .iter()
                 .map(|value| match value {
-                    Value::Variable(name) => Value::Number(
+                    Value::Variable(name) => Ok(Value::Number(
                         *var_map
                             .get(name)
-                            .expect(&format!("Variable {name} does not exist.")),
-                    ),
-                    val => val.to_owned(),
+                            .ok_or(format!("variable {name} does not exist"))?,
+                    )),
+                    val => Ok(val.to_owned()),
                 })
-                .collect(),
+                .collect::<Result<RPN, String>>()?,
         );
+
+        Ok(())
     }
 
     /// no_var_rpn cannot be empty
-    pub fn eval(&self) -> EmitResult {
+    pub fn eval(&self) -> Result<EmitResult, EvalError> {
         assert!(self.no_var_rpn != None);
         let mut rpn = self
             .no_var_rpn
             .clone()
-            .expect("The provided rpn contains variables.");
+            .ok_or(EvalError::ContainsVariables)?;
 
         // stack - 0th index in, 0th index out
         let mut value_stack: VecDeque<EmitResult> = VecDeque::new();
@@ -82,10 +106,19 @@ impl Emitter {
             match val {
                 Value::Number(num) => value_stack.push_front(EmitResult::Number(num)),
                 Value::Operator(op) => {
-                    assert!(value_stack.len() >= 2, "Not enough values entered.");
-                    let second_val = value_stack.pop_front().unwrap();
-                    let first_val = value_stack.pop_front().unwrap();
+                    if value_stack.len() < 2 {
+                        return Err(EvalError::NotEnoughValues);
+                    }
+                    let second_val = value_stack.pop_front().expect(&format!(
+                        "could not pop first value of stack: {:#?}",
+                        value_stack
+                    ));
+                    let first_val = value_stack.pop_front().expect(&format!(
+                        "could not pop first value of stack: {:#?}",
+                        value_stack
+                    ));
 
+                    // unreachable because the rpn should not be created manually
                     let val: EmitResult = match op {
                         OperatorType::LeftParenthesis => {
                             unreachable!("RPN cannot have parentheses.")
@@ -94,8 +127,8 @@ impl Emitter {
                         | OperatorType::Minus
                         | OperatorType::Times
                         | OperatorType::Divide => {
-                            let EmitResult::Number(first) = first_val else {panic!("Value is not number. Value: {first_val:#?}.")};
-                            let EmitResult::Number(second) = second_val else {panic!("Value is not number. Value: {second_val:#?}.")};
+                            let EmitResult::Number(first) = first_val else {unreachable!("value is not number, value: {first_val:#?}")};
+                            let EmitResult::Number(second) = second_val else {unreachable!("value is not number, value: {second_val:#?}")};
                             EmitResult::Number(op.eval_nums(first, second))
                         }
                         OperatorType::LT
@@ -103,27 +136,29 @@ impl Emitter {
                         | OperatorType::GT
                         | OperatorType::GE
                         | OperatorType::Eq => {
-                            let EmitResult::Number(first) = first_val else {panic!("Value is not number. Value: {first_val:#?}.")};
-                            let EmitResult::Number(second) = second_val else {panic!("Value is not number. Value: {second_val:#?}.")};
+                            let EmitResult::Number(first) = first_val else {unreachable!("value is not number, value: {first_val:#?}")};
+                            let EmitResult::Number(second) = second_val else {unreachable!("value is not number, value: {second_val:#?}")};
                             EmitResult::Bool(op.eval_comparison(first, second))
                         }
                         OperatorType::And | OperatorType::Or => {
-                            let EmitResult::Bool(first) = first_val else {panic!("Value is not bool. Value: {first_val:#?}.")};
-                            let EmitResult::Bool(second) = second_val else {panic!("Value is not bool. Value: {second_val:#?}.")};
+                            let EmitResult::Bool(first) = first_val else {unreachable!("value is not bool, value: {first_val:#?}")};
+                            let EmitResult::Bool(second) = second_val else {unreachable!("value is not bool, value: {second_val:#?}")};
                             EmitResult::Bool(op.eval_conditional(first, second))
                         }
                     };
                     value_stack.push_front(val);
                 }
                 Value::Variable(_) => {
-                    unreachable!("RPN cannot contain variables. Use `bind_variables` first.")
+                    unreachable!("RPN cannot contain variables, use `bind_variables` first")
                 }
             };
         }
 
-        assert_eq!(value_stack.len(), 1, "Too much values entered.");
+        if value_stack.len() > 1 {
+            return Err(EvalError::TooMuchValues);
+        }
 
-        value_stack[0]
+        Ok(value_stack[0])
     }
 }
 
@@ -173,7 +208,7 @@ mod tests {
         ]);
 
         let var_map: VariableMap = HashMap::from_iter(vec![("x".to_string(), 3.0)]);
-        emitter.bind_variables(&var_map);
+        emitter.bind_variables(&var_map).unwrap();
         assert_eq!(
             emitter.no_var_rpn,
             Some(vec![
@@ -194,7 +229,7 @@ mod tests {
         ]);
 
         let var_map: VariableMap = HashMap::from_iter(vec![("y".to_string(), 3.0)]);
-        emitter.bind_variables(&var_map);
+        emitter.bind_variables(&var_map).unwrap();
         assert_eq!(
             emitter.no_var_rpn,
             Some(vec![
@@ -215,7 +250,7 @@ mod tests {
         ];
         let emitter = Emitter::new(rpn);
 
-        assert_eq!(emitter.eval(), EmitResult::Number(3.0));
+        assert_eq!(emitter.eval().unwrap(), EmitResult::Number(3.0));
     }
 
     #[test]
@@ -230,7 +265,7 @@ mod tests {
         ];
         let emitter = Emitter::new(rpn);
 
-        assert_eq!(emitter.eval(), EmitResult::Number(7.0));
+        assert_eq!(emitter.eval().unwrap(), EmitResult::Number(7.0));
     }
 
     #[test]
@@ -245,7 +280,7 @@ mod tests {
         ];
         let emitter = Emitter::new(rpn);
 
-        assert_eq!(emitter.eval(), EmitResult::Number(9.0));
+        assert_eq!(emitter.eval().unwrap(), EmitResult::Number(9.0));
     }
 
     #[test]
@@ -262,7 +297,7 @@ mod tests {
         ];
         let emitter = Emitter::new(rpn);
 
-        assert_eq!(emitter.eval(), EmitResult::Number(33.0));
+        assert_eq!(emitter.eval().unwrap(), EmitResult::Number(33.0));
     }
 
     #[test]
@@ -284,28 +319,32 @@ mod tests {
             Value::Operator(OperatorType::And),
         ];
         let mut emitter = Emitter::new(rpn);
-        emitter.bind_variables(&HashMap::from_iter(vec![
-            ("a".to_string(), 3.0),
-            ("b".to_string(), 5.0),
-            ("c".to_string(), 9.0),
-            ("d".to_string(), 4.0),
-            ("e".to_string(), 1.0),
-            ("f".to_string(), 9.0),
-            ("g".to_string(), 3.0),
-        ]));
+        emitter
+            .bind_variables(&HashMap::from_iter(vec![
+                ("a".to_string(), 3.0),
+                ("b".to_string(), 5.0),
+                ("c".to_string(), 9.0),
+                ("d".to_string(), 4.0),
+                ("e".to_string(), 1.0),
+                ("f".to_string(), 9.0),
+                ("g".to_string(), 3.0),
+            ]))
+            .unwrap();
 
-        assert_eq!(emitter.eval(), EmitResult::Bool(false));
+        assert_eq!(emitter.eval().unwrap(), EmitResult::Bool(false));
 
-        emitter.bind_variables(&HashMap::from_iter(vec![
-            ("a".to_string(), 6.0),
-            ("b".to_string(), 5.0),
-            ("c".to_string(), 9.0),
-            ("d".to_string(), 4.0),
-            ("e".to_string(), 4.0),
-            ("f".to_string(), 9.0),
-            ("g".to_string(), 3.0),
-        ]));
+        emitter
+            .bind_variables(&HashMap::from_iter(vec![
+                ("a".to_string(), 6.0),
+                ("b".to_string(), 5.0),
+                ("c".to_string(), 9.0),
+                ("d".to_string(), 4.0),
+                ("e".to_string(), 4.0),
+                ("f".to_string(), 9.0),
+                ("g".to_string(), 3.0),
+            ]))
+            .unwrap();
 
-        assert_eq!(emitter.eval(), EmitResult::Bool(true));
+        assert_eq!(emitter.eval().unwrap(), EmitResult::Bool(true));
     }
 }

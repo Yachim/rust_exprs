@@ -42,6 +42,25 @@ pub enum OperatorType {
     LeftParenthesis,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum ParserError {
+    NoMatchingLeftParenthesis,
+    ExtraLeftParenthesis,
+}
+
+impl std::fmt::Display for ParserError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParserError::NoMatchingLeftParenthesis => {
+                write!(f, "right parenthesis has no matching left parenthesis")
+            }
+            Self::ExtraLeftParenthesis => {
+                write!(f, "extra left parenthesis")
+            }
+        }
+    }
+}
+
 impl OperatorType {
     fn from_str(str: &str) -> Self {
         match str {
@@ -56,7 +75,7 @@ impl OperatorType {
             ">" => Self::GT,
             ">=" => Self::GE,
             "=" => Self::Eq,
-            _ => unreachable!("Invalid value: {str}"),
+            _ => unreachable!("invalid value: {str}"),
         }
     }
 
@@ -65,7 +84,7 @@ impl OperatorType {
     fn get_priority(&self) -> u32 {
         match self {
             Self::LeftParenthesis => {
-                unreachable!("Trying to get priority of parantheses")
+                unreachable!("trying to get priority of paranthesis")
             }
 
             Self::Or => 1,
@@ -88,10 +107,10 @@ impl OperatorType {
             Self::Times => first * second,
             Self::Divide => first / second,
             Self::And | Self::Or => {
-                panic!("Method `eval_conditional` should be used instead.")
+                panic!("method `eval_conditional` should be used instead")
             }
             Self::LT | Self::LE | Self::GT | Self::GE | Self::Eq => {
-                panic!("Method `eval_comparison` should be used instead.")
+                panic!("method `eval_comparison` should be used instead")
             }
         }
     }
@@ -103,12 +122,12 @@ impl OperatorType {
             }
 
             Self::Plus | Self::Minus | Self::Times | Self::Divide => {
-                panic!("Method `eval_nums` should be used instead.")
+                panic!("method `eval_nums` should be used instead")
             }
             Self::And => first && second,
             Self::Or => first || second,
             Self::LT | Self::LE | Self::GT | Self::GE | Self::Eq => {
-                panic!("Method `eval_comparison` should be used instead.")
+                panic!("method `eval_comparison` should be used instead")
             }
         }
     }
@@ -116,14 +135,14 @@ impl OperatorType {
     pub fn eval_comparison(&self, first: f32, second: f32) -> bool {
         match self {
             Self::LeftParenthesis => {
-                unreachable!("OperatorType parenthesis")
+                unreachable!("operatorType parenthesis")
             }
 
             Self::Plus | Self::Minus | Self::Times | Self::Divide => {
-                panic!("Method `eval_nums` should be used instead.")
+                panic!("method `eval_nums` should be used instead.")
             }
             Self::And | Self::Or => {
-                panic!("Method `eval_conditional` should be used instead.")
+                panic!("method `eval_conditional` should be used instead.")
             }
             Self::LT => first < second,
             Self::LE => first <= second,
@@ -141,64 +160,73 @@ pub enum Value {
     Variable(String),
 }
 
-pub fn tokens_to_rpn(tokens: TokenList) -> RPN {
+pub fn tokens_to_rpn(tokens: TokenList) -> Result<RPN, ParserError> {
     // queue - last index in, 0th index out
     let mut token_queue: RPN = vec![];
     // stack - 0th index in, 0th index out
     let mut operator_stack: VecDeque<OperatorType> = VecDeque::new();
 
-    tokens.iter().for_each(|token| match token.token_type {
-        TokenType::Number => token_queue.push(Value::Number(
-            token.value.parse().expect("Failed to parse float"),
-        )),
-        TokenType::Variable => token_queue.push(Value::Variable(token.value.clone())),
-        TokenType::Parenthesis => match token.value.as_str() {
-            "(" => operator_stack.push_front(OperatorType::LeftParenthesis),
-            ")" => {
-                while operator_stack.len() > 0 && operator_stack[0] != OperatorType::LeftParenthesis
-                {
-                    token_queue.push(Value::Operator(operator_stack.pop_front().unwrap()))
+    for token in tokens {
+        match token.token_type {
+            TokenType::Number => token_queue.push(Value::Number(
+                token.value.parse().expect("failed to parse float"),
+            )),
+            TokenType::Variable => token_queue.push(Value::Variable(token.value.clone())),
+            TokenType::Parenthesis => match token.value.as_str() {
+                "(" => operator_stack.push_front(OperatorType::LeftParenthesis),
+                ")" => {
+                    while operator_stack.len() > 0
+                        && operator_stack[0] != OperatorType::LeftParenthesis
+                    {
+                        token_queue.push(Value::Operator(operator_stack.pop_front().expect(
+                            &format!("could not pop first value of stack: {:#?}", operator_stack),
+                        )))
+                    }
+                    if operator_stack[0] != OperatorType::LeftParenthesis {
+                        return Err(ParserError::NoMatchingLeftParenthesis);
+                    }
+
+                    operator_stack.pop_front().expect(&format!(
+                        "could not pop first value of stack: {:#?}",
+                        operator_stack
+                    ));
                 }
-                assert_eq!(
-                    operator_stack[0],
-                    OperatorType::LeftParenthesis,
-                    "No matching left parenthesis."
-                );
+                _ => unreachable!(
+                    "token of type parenthesis has invalid value, value: {}",
+                    token.value
+                ),
+            },
+            TokenType::Operator => {
+                let op = OperatorType::from_str(token.value.as_str());
 
-                operator_stack.pop_front();
+                while operator_stack.len() > 0
+                    && operator_stack[0] != OperatorType::LeftParenthesis
+                    && operator_stack[0].get_priority() >= op.get_priority()
+                {
+                    token_queue.push(Value::Operator(operator_stack.pop_front().expect(
+                        &format!("could not pop first value of stack: {:#?}", operator_stack),
+                    )));
+                }
+
+                operator_stack.push_front(op);
             }
-            _ => unreachable!(
-                "Token of type parenthesis has invalid value. Value: {}.",
-                token.value
-            ),
-        },
-        TokenType::Operator => {
-            let op = OperatorType::from_str(token.value.as_str());
-
-            while operator_stack.len() > 0
-                && operator_stack[0] != OperatorType::LeftParenthesis
-                && operator_stack[0].get_priority() >= op.get_priority()
-            {
-                token_queue.push(Value::Operator(operator_stack.pop_front().unwrap()));
-            }
-
-            operator_stack.push_front(op);
+            TokenType::Whitespace => unimplemented!("whitespace in token list"),
         }
-        TokenType::Whitespace => unimplemented!("Whitespace in token list"),
-    });
+    }
 
     while operator_stack.len() > 0 {
-        let op = operator_stack.pop_front().unwrap();
+        let op = operator_stack.pop_front().expect(&format!(
+            "could not pop first stack from stack: {:#?}",
+            operator_stack
+        ));
 
-        assert_ne!(
-            op,
-            OperatorType::LeftParenthesis,
-            "Left paranthesis on top of operator stack."
-        );
+        if op == OperatorType::LeftParenthesis {
+            return Err(ParserError::ExtraLeftParenthesis);
+        }
         token_queue.push(Value::Operator(op));
     }
 
-    token_queue
+    Ok(token_queue)
 }
 
 #[cfg(test)]
@@ -237,7 +265,7 @@ mod tests {
 
         let rpn = tokens_to_rpn(tokens);
         assert_eq!(
-            rpn,
+            rpn.unwrap(),
             vec![
                 Value::Number(1.0),
                 Value::Number(4.0),
@@ -276,7 +304,7 @@ mod tests {
 
         let rpn = tokens_to_rpn(tokens);
         assert_eq!(
-            rpn,
+            rpn.unwrap(),
             vec![
                 Value::Number(1.0),
                 Value::Number(2.0),
@@ -323,7 +351,7 @@ mod tests {
 
         let rpn = tokens_to_rpn(tokens);
         assert_eq!(
-            rpn,
+            rpn.unwrap(),
             vec![
                 Value::Number(1.0),
                 Value::Number(2.0),
@@ -378,7 +406,7 @@ mod tests {
 
         let rpn = tokens_to_rpn(tokens);
         assert_eq!(
-            rpn,
+            rpn.unwrap(),
             vec![
                 Value::Number(5.0),
                 Value::Number(3.0),
@@ -419,7 +447,7 @@ mod tests {
 
         let rpn = tokens_to_rpn(tokens);
         assert_eq!(
-            rpn,
+            rpn.unwrap(),
             vec![
                 Value::Variable("a".to_string()),
                 Value::Variable("b".to_string()),
@@ -490,7 +518,7 @@ mod tests {
 
         let rpn = tokens_to_rpn(tokens);
         assert_eq!(
-            rpn,
+            rpn.unwrap(),
             vec![
                 Value::Variable("a".to_string()),
                 Value::Variable("b".to_string()),
