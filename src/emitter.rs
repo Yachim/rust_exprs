@@ -86,7 +86,7 @@ impl Emitter {
                     let first_val = value_stack.pop_front().unwrap();
 
                     let val: EmitResult = match op {
-                        OperatorType::LeftParenthesis | OperatorType::RightParenthesis => {
+                        OperatorType::LeftParenthesis => {
                             unreachable!("RPN cannot have parentheses.")
                         }
                         OperatorType::Plus

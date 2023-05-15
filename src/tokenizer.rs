@@ -80,7 +80,7 @@ impl Tokenizer {
                     None
                 })
                 .expect(&format!(
-                    "No token matched\nindex: `{index}`\nstring: `{str}`\nsubstring: `{}`.",
+                    "No token matched\nindex: `{index}`\nstring: `{str}`\nsubstring: `{}`",
                     &str[index..]
                 ));
 

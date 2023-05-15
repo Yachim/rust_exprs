@@ -40,9 +40,6 @@ pub enum OperatorType {
 
     /// (
     LeftParenthesis,
-
-    /// )
-    RightParenthesis,
 }
 
 impl OperatorType {
@@ -67,7 +64,7 @@ impl OperatorType {
     /// the higher the number, the higher the priority
     fn get_priority(&self) -> u32 {
         match self {
-            Self::LeftParenthesis | Self::RightParenthesis => {
+            Self::LeftParenthesis => {
                 unreachable!("Trying to get priority of parantheses")
             }
 
@@ -82,7 +79,7 @@ impl OperatorType {
 
     pub fn eval_nums(&self, first: f32, second: f32) -> f32 {
         match self {
-            Self::LeftParenthesis | Self::RightParenthesis => {
+            Self::LeftParenthesis => {
                 unreachable!("OperatorType parenthesis")
             }
 
@@ -101,7 +98,7 @@ impl OperatorType {
 
     pub fn eval_conditional(&self, first: bool, second: bool) -> bool {
         match self {
-            Self::LeftParenthesis | Self::RightParenthesis => {
+            Self::LeftParenthesis => {
                 unreachable!("OperatorType parenthesis")
             }
 
@@ -118,7 +115,7 @@ impl OperatorType {
 
     pub fn eval_comparison(&self, first: f32, second: f32) -> bool {
         match self {
-            Self::LeftParenthesis | Self::RightParenthesis => {
+            Self::LeftParenthesis => {
                 unreachable!("OperatorType parenthesis")
             }
 
