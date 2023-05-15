@@ -35,7 +35,7 @@ pub struct Emitter {
 
 #[derive(Debug, PartialEq)]
 pub enum EvalError {
-    ContainsVariables,
+    NoVariables,
     NotEnoughValues,
     TooMuchValues,
 }
@@ -43,11 +43,8 @@ pub enum EvalError {
 impl std::fmt::Display for EvalError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            EvalError::ContainsVariables => {
-                write!(
-                    f,
-                    "Rpn cannot contain variables, use `bind_variables` first"
-                )
+            EvalError::NoVariables => {
+                write!(f, "variables not provided, use `bind_variables` first")
             }
             EvalError::NotEnoughValues => write!(f, "not enough values entered"),
             EvalError::TooMuchValues => write!(f, "too much values entered"),
@@ -90,10 +87,10 @@ impl Emitter {
     /// no_var_rpn cannot be empty
     pub fn eval(&self) -> Result<EmitResult, EvalError> {
         assert!(self.no_var_rpn.is_some());
-        let mut rpn = self
-            .no_var_rpn
-            .clone()
-            .ok_or(EvalError::ContainsVariables)?;
+        if self.no_var_rpn.is_none() {
+            return Err(EvalError::NoVariables);
+        }
+        let mut rpn = self.no_var_rpn.clone().ok_or(EvalError::NoVariables)?;
 
         // stack - 0th index in, 0th index out
         let mut value_stack: VecDeque<EmitResult> = VecDeque::new();
