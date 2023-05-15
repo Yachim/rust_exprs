@@ -86,7 +86,6 @@ impl Emitter {
 
     /// no_var_rpn cannot be empty
     pub fn eval(&self) -> Result<EmitResult, EvalError> {
-        assert!(self.no_var_rpn.is_some());
         if self.no_var_rpn.is_none() {
             return Err(EvalError::NoVariables);
         }
