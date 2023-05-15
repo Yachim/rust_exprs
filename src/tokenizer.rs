@@ -1,6 +1,7 @@
 use regex::Regex;
 
 const WHITESPACE_REGEX: &str = r"^\s+";
+// "unregognized escape sequence" - on `\/` (division)
 const OPERATOR_REGEX: &str = r"^(\+|-|\*|\/|&&|\|\||<=|>=|<|>|=)";
 const NUMBER_REGEX: &str = r"^(\d+(?:\.\d+)?)";
 const VARIABLE_REGEX: &str = r"^\{(.+?)\}";

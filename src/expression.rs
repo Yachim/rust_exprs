@@ -42,7 +42,7 @@ impl Expression {
     /// Creates and expression from standard infix string.
     pub fn new(expr: &str) -> Result<Expression, ExpressionCreationError> {
         let tokenizer = Tokenizer::new();
-        let tokens = tokenizer.tokenize(&expr)?;
+        let tokens = tokenizer.tokenize(expr)?;
         let rpn = tokens_to_rpn(tokens)?;
         let emitter = Emitter::new(rpn);
 

@@ -1,4 +1,4 @@
-use crate::parser::{OperatorType, Value, RPN};
+use crate::parser::{OperatorType, Rpn, Value};
 use std::collections::{HashMap, VecDeque};
 
 pub type VariableMap = HashMap<String, f32>;
@@ -29,8 +29,8 @@ impl From<EmitResult> for f32 {
 
 #[derive(Debug, Clone)]
 pub struct Emitter {
-    rpn: RPN,
-    no_var_rpn: Option<RPN>,
+    rpn: Rpn,
+    no_var_rpn: Option<Rpn>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -46,7 +46,7 @@ impl std::fmt::Display for EvalError {
             EvalError::ContainsVariables => {
                 write!(
                     f,
-                    "RPN cannot contain variables, use `bind_variables` first"
+                    "Rpn cannot contain variables, use `bind_variables` first"
                 )
             }
             EvalError::NotEnoughValues => write!(f, "not enough values entered"),
@@ -56,11 +56,8 @@ impl std::fmt::Display for EvalError {
 }
 
 impl Emitter {
-    pub fn new(rpn: RPN) -> Self {
-        let contains_variable = rpn.iter().any(|value| match value {
-            Value::Variable(_) => true,
-            _ => false,
-        });
+    pub fn new(rpn: Rpn) -> Self {
+        let contains_variable = rpn.iter().any(|value| matches!(value, Value::Variable(_)));
 
         let no_var_rpn = if contains_variable {
             None
@@ -84,7 +81,7 @@ impl Emitter {
                     )),
                     val => Ok(val.to_owned()),
                 })
-                .collect::<Result<RPN, String>>()?,
+                .collect::<Result<Rpn, String>>()?,
         );
 
         Ok(())
@@ -92,7 +89,7 @@ impl Emitter {
 
     /// no_var_rpn cannot be empty
     pub fn eval(&self) -> Result<EmitResult, EvalError> {
-        assert!(self.no_var_rpn != None);
+        assert!(self.no_var_rpn.is_some());
         let mut rpn = self
             .no_var_rpn
             .clone()
@@ -101,7 +98,7 @@ impl Emitter {
         // stack - 0th index in, 0th index out
         let mut value_stack: VecDeque<EmitResult> = VecDeque::new();
 
-        while rpn.len() > 0 {
+        while !rpn.is_empty() {
             let val = rpn.remove(0);
             match val {
                 Value::Number(num) => value_stack.push_front(EmitResult::Number(num)),
@@ -109,19 +106,17 @@ impl Emitter {
                     if value_stack.len() < 2 {
                         return Err(EvalError::NotEnoughValues);
                     }
-                    let second_val = value_stack.pop_front().expect(&format!(
-                        "could not pop first value of stack: {:#?}",
-                        value_stack
-                    ));
-                    let first_val = value_stack.pop_front().expect(&format!(
-                        "could not pop first value of stack: {:#?}",
-                        value_stack
-                    ));
+                    let second_val = value_stack.pop_front().unwrap_or_else(|| {
+                        panic!("could not pop first value of stack: {:#?}", value_stack)
+                    });
+                    let first_val = value_stack.pop_front().unwrap_or_else(|| {
+                        panic!("could not pop first value of stack: {:#?}", value_stack)
+                    });
 
                     // unreachable because the rpn should not be created manually
                     let val: EmitResult = match op {
                         OperatorType::LeftParenthesis => {
-                            unreachable!("RPN cannot have parentheses.")
+                            unreachable!("Rpn cannot have parentheses.")
                         }
                         OperatorType::Plus
                         | OperatorType::Minus
@@ -149,7 +144,7 @@ impl Emitter {
                     value_stack.push_front(val);
                 }
                 Value::Variable(_) => {
-                    unreachable!("RPN cannot contain variables, use `bind_variables` first")
+                    unreachable!("Rpn cannot contain variables, use `bind_variables` first")
                 }
             };
         }

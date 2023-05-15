@@ -1,7 +1,7 @@
 use crate::tokenizer::{TokenList, TokenType};
 use std::collections::VecDeque;
 
-pub type RPN = Vec<Value>;
+pub type Rpn = Vec<Value>;
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum OperatorType {
@@ -160,9 +160,9 @@ pub enum Value {
     Variable(String),
 }
 
-pub fn tokens_to_rpn(tokens: TokenList) -> Result<RPN, ParserError> {
+pub fn tokens_to_rpn(tokens: TokenList) -> Result<Rpn, ParserError> {
     // queue - last index in, 0th index out
-    let mut token_queue: RPN = vec![];
+    let mut token_queue: Rpn = vec![];
     // stack - 0th index in, 0th index out
     let mut operator_stack: VecDeque<OperatorType> = VecDeque::new();
 
@@ -175,21 +175,22 @@ pub fn tokens_to_rpn(tokens: TokenList) -> Result<RPN, ParserError> {
             TokenType::Parenthesis => match token.value.as_str() {
                 "(" => operator_stack.push_front(OperatorType::LeftParenthesis),
                 ")" => {
-                    while operator_stack.len() > 0
+                    while !operator_stack.is_empty()
                         && operator_stack[0] != OperatorType::LeftParenthesis
                     {
-                        token_queue.push(Value::Operator(operator_stack.pop_front().expect(
-                            &format!("could not pop first value of stack: {:#?}", operator_stack),
-                        )))
+                        token_queue.push(Value::Operator(
+                            operator_stack.pop_front().unwrap_or_else(|| {
+                                panic!("could not pop first value of stack: {:#?}", operator_stack)
+                            }),
+                        ))
                     }
                     if operator_stack[0] != OperatorType::LeftParenthesis {
                         return Err(ParserError::NoMatchingLeftParenthesis);
                     }
 
-                    operator_stack.pop_front().expect(&format!(
-                        "could not pop first value of stack: {:#?}",
-                        operator_stack
-                    ));
+                    operator_stack.pop_front().unwrap_or_else(|| {
+                        panic!("could not pop first value of stack: {:#?}", operator_stack)
+                    });
                 }
                 _ => unreachable!(
                     "token of type parenthesis has invalid value, value: {}",
@@ -199,12 +200,12 @@ pub fn tokens_to_rpn(tokens: TokenList) -> Result<RPN, ParserError> {
             TokenType::Operator => {
                 let op = OperatorType::from_str(token.value.as_str());
 
-                while operator_stack.len() > 0
+                while !operator_stack.is_empty()
                     && operator_stack[0] != OperatorType::LeftParenthesis
                     && operator_stack[0].get_priority() >= op.get_priority()
                 {
-                    token_queue.push(Value::Operator(operator_stack.pop_front().expect(
-                        &format!("could not pop first value of stack: {:#?}", operator_stack),
+                    token_queue.push(Value::Operator(operator_stack.pop_front().unwrap_or_else(
+                        || panic!("could not pop first value of stack: {:#?}", operator_stack),
                     )));
                 }
 
@@ -214,11 +215,13 @@ pub fn tokens_to_rpn(tokens: TokenList) -> Result<RPN, ParserError> {
         }
     }
 
-    while operator_stack.len() > 0 {
-        let op = operator_stack.pop_front().expect(&format!(
-            "could not pop first stack from stack: {:#?}",
-            operator_stack
-        ));
+    while !operator_stack.is_empty() {
+        let op = operator_stack.pop_front().unwrap_or_else(|| {
+            panic!(
+                "could not pop first stack from stack: {:#?}",
+                operator_stack
+            )
+        });
 
         if op == OperatorType::LeftParenthesis {
             return Err(ParserError::ExtraLeftParenthesis);
