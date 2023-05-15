@@ -4,6 +4,7 @@ use crate::{
     tokenizer::Tokenizer,
 };
 
+#[derive(Debug)]
 pub struct Expression {
     pub str_expr: String,
     emitter: Emitter,
@@ -38,11 +39,8 @@ impl Expression {
 
 #[cfg(test)]
 mod tests {
-    use super::{EmitResult, Emitter};
-    use crate::{
-        expression::Expression,
-        parser::{OperatorType, Value},
-    };
+    use super::EmitResult;
+    use crate::expression::Expression;
     use pretty_assertions::assert_eq;
     use std::collections::HashMap;
 

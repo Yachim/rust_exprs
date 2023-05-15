@@ -27,6 +27,7 @@ impl Into<f32> for EmitResult {
     }
 }
 
+#[derive(Debug)]
 pub struct Emitter {
     rpn: RPN,
     no_var_rpn: Option<RPN>,
