@@ -4,7 +4,7 @@ use crate::{
     tokenizer::Tokenizer,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Expression {
     pub str_expr: String,
     emitter: Emitter,
