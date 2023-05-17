@@ -13,6 +13,7 @@ A library to parse logical and mathematical string expressions.
 
 Not supported:
  - negative numbers
+ - unary not operator (`!`)
  - boolean variables (program panics), only f32
 
 ## Usage
