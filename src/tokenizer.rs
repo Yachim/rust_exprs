@@ -4,6 +4,7 @@ const WHITESPACE_REGEX: &str = r"^\s+";
 // "unregognized escape sequence" - on `\/` (division)
 const OPERATOR_REGEX: &str = r"^(\+|-|\*|\/|&&|\|\||<=|>=|<|>|=)";
 const NUMBER_REGEX: &str = r"^(\d+(?:\.\d+)?)";
+const BOOLEAN_REGEX: &str = r"^(true|false)";
 const VARIABLE_REGEX: &str = r"^\{(.+?)\}";
 const PARENTHESIS_REGEX: &str = r"^(\(|\))";
 
@@ -13,6 +14,7 @@ pub enum TokenType {
     Whitespace,
     Operator,
     Number,
+    Boolean,
     Variable,
     Parenthesis,
 }
@@ -70,6 +72,11 @@ impl Tokenizer {
                     regex: Regex::new(NUMBER_REGEX)
                         .expect("error while creating number matcher regex"),
                     token_type: TokenType::Number,
+                },
+                Matcher {
+                    regex: Regex::new(BOOLEAN_REGEX)
+                        .expect("error while creating boolean matcher regex"),
+                    token_type: TokenType::Boolean,
                 },
                 Matcher {
                     regex: Regex::new(VARIABLE_REGEX)
@@ -282,5 +289,24 @@ mod tests {
                 },
             ]
         );
+
+        let tokens4 = tokenizer.tokenize("true || false");
+        assert_eq!(
+            tokens4.unwrap(),
+            vec![
+                Token {
+                    token_type: TokenType::Boolean,
+                    value: "true".to_string()
+                },
+                Token {
+                    token_type: TokenType::Operator,
+                    value: "||".to_string()
+                },
+                Token {
+                    token_type: TokenType::Boolean,
+                    value: "false".to_string()
+                }
+            ]
+        )
     }
 }

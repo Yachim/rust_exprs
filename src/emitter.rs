@@ -6,13 +6,13 @@ pub type VariableMap = HashMap<String, f32>;
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum EmitResult {
     Number(f32),
-    Bool(bool),
+    Boolean(bool),
 }
 
 impl From<EmitResult> for bool {
     fn from(value: EmitResult) -> Self {
         match value {
-            EmitResult::Bool(val) => val,
+            EmitResult::Boolean(val) => val,
             EmitResult::Number(_) => panic!("value is number, not a boolean"),
         }
     }
@@ -22,7 +22,7 @@ impl From<EmitResult> for f32 {
     fn from(value: EmitResult) -> Self {
         match value {
             EmitResult::Number(val) => val,
-            EmitResult::Bool(_) => panic!("value is boolean, not a number"),
+            EmitResult::Boolean(_) => panic!("value is boolean, not a number"),
         }
     }
 }
@@ -98,6 +98,7 @@ impl Emitter {
             let val = rpn.remove(0);
             match val {
                 Value::Number(num) => value_stack.push_front(EmitResult::Number(num)),
+                Value::Boolean(boolean) => value_stack.push_front(EmitResult::Boolean(boolean)),
                 Value::Operator(op) => {
                     if value_stack.len() < 2 {
                         return Err(EvalError::NotEnoughValues);
@@ -129,12 +130,12 @@ impl Emitter {
                         | OperatorType::Eq => {
                             let EmitResult::Number(first) = first_val else {unreachable!("value is not number, value: {first_val:#?}")};
                             let EmitResult::Number(second) = second_val else {unreachable!("value is not number, value: {second_val:#?}")};
-                            EmitResult::Bool(op.eval_comparison(first, second))
+                            EmitResult::Boolean(op.eval_comparison(first, second))
                         }
                         OperatorType::And | OperatorType::Or => {
-                            let EmitResult::Bool(first) = first_val else {unreachable!("value is not bool, value: {first_val:#?}")};
-                            let EmitResult::Bool(second) = second_val else {unreachable!("value is not bool, value: {second_val:#?}")};
-                            EmitResult::Bool(op.eval_conditional(first, second))
+                            let EmitResult::Boolean(first) = first_val else {unreachable!("value is not bool, value: {first_val:#?}")};
+                            let EmitResult::Boolean(second) = second_val else {unreachable!("value is not bool, value: {second_val:#?}")};
+                            EmitResult::Boolean(op.eval_conditional(first, second))
                         }
                     };
                     value_stack.push_front(val);
@@ -146,6 +147,7 @@ impl Emitter {
         }
 
         if value_stack.len() > 1 {
+            println!("{value_stack:#?}{:#?}", self.no_var_rpn);
             return Err(EvalError::TooMuchValues);
         }
 
@@ -322,7 +324,7 @@ mod tests {
             ]))
             .unwrap();
 
-        assert_eq!(emitter.eval().unwrap(), EmitResult::Bool(false));
+        assert_eq!(emitter.eval().unwrap(), EmitResult::Boolean(false));
 
         emitter
             .bind_variables(&HashMap::from_iter(vec![
@@ -336,6 +338,30 @@ mod tests {
             ]))
             .unwrap();
 
-        assert_eq!(emitter.eval().unwrap(), EmitResult::Bool(true));
+        assert_eq!(emitter.eval().unwrap(), EmitResult::Boolean(true));
+    }
+
+    #[test]
+    fn test_6() {
+        let rpn = vec![Value::Boolean(true)];
+        let emitter = Emitter::new(rpn);
+        assert_eq!(emitter.eval().unwrap(), EmitResult::Boolean(true));
+
+        let rpn = vec![Value::Boolean(false)];
+        let emitter = Emitter::new(rpn);
+        assert_eq!(emitter.eval().unwrap(), EmitResult::Boolean(false));
+    }
+
+    #[test]
+    fn test_7() {
+        let rpn = vec![
+            Value::Boolean(true),
+            Value::Boolean(false),
+            Value::Operator(OperatorType::And),
+            Value::Boolean(true),
+            Value::Operator(OperatorType::Or),
+        ];
+        let emitter = Emitter::new(rpn);
+        assert_eq!(emitter.eval().unwrap(), EmitResult::Boolean(true));
     }
 }

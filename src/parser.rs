@@ -157,6 +157,7 @@ impl OperatorType {
 pub enum Value {
     Operator(OperatorType),
     Number(f32),
+    Boolean(bool),
     Variable(String),
 }
 
@@ -171,6 +172,14 @@ pub fn tokens_to_rpn(tokens: TokenList) -> Result<Rpn, ParserError> {
             TokenType::Number => token_queue.push(Value::Number(
                 token.value.parse().expect("failed to parse float"),
             )),
+            TokenType::Boolean => token_queue.push(Value::Boolean(match token.value.as_str() {
+                "true" => true,
+                "false" => false,
+                _ => unreachable!(
+                    "token of type parenthesis has invalid value, value: {}",
+                    token.value
+                ),
+            })),
             TokenType::Variable => token_queue.push(Value::Variable(token.value.clone())),
             TokenType::Parenthesis => match token.value.as_str() {
                 "(" => operator_stack.push_front(OperatorType::LeftParenthesis),
@@ -536,6 +545,34 @@ mod tests {
                 Value::Operator(OperatorType::And),
             ]
         );
+    }
+
+    #[test]
+    fn test_7() {
+        let tokens: TokenList = vec![
+            Token {
+                token_type: TokenType::Boolean,
+                value: "true".to_string(),
+            },
+            Token {
+                token_type: TokenType::Operator,
+                value: "||".to_string(),
+            },
+            Token {
+                token_type: TokenType::Boolean,
+                value: "false".to_string(),
+            },
+        ];
+
+        let rpn = tokens_to_rpn(tokens);
+        assert_eq!(
+            rpn.unwrap(),
+            vec![
+                Value::Boolean(true),
+                Value::Boolean(false),
+                Value::Operator(OperatorType::Or)
+            ]
+        )
     }
 
     #[test]

@@ -12,6 +12,10 @@ A library to parse logical and mathematical string expressions.
 
 Negative numbers are not supported.
 
+## TODO:
+ - boolean values
+ - variables supporting both boolean and number values (and type safe)
+
 ## Usage
 
 ## Examples

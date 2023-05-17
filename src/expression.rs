@@ -135,4 +135,20 @@ mod tests {
 
         assert_eq!(true_res, true);
     }
+
+    #[test]
+    fn test_6() {
+        let expr = Expression::new("true || (false && true)").unwrap();
+        let res: bool = expr.eval().unwrap().into();
+
+        assert_eq!(res, true);
+    }
+
+    #[test]
+    fn test_7() {
+        let expr = Expression::new("true || false && true").unwrap();
+        let res: bool = expr.eval().unwrap().into();
+
+        assert_eq!(res, true);
+    }
 }
