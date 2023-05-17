@@ -15,11 +15,6 @@ Not supported:
  - negative numbers
  - boolean variables, only f32
 
-
-## TODO:
- - boolean values
- - variables supporting both boolean and number values (and type safe)
-
 ## Usage
 
 ## Examples
