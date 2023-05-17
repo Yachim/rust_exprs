@@ -52,6 +52,22 @@ impl std::fmt::Display for EvalError {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub enum BindVariablesError {
+    // name of the variable as parameter
+    VariableDoesNotExist(String),
+}
+
+impl std::fmt::Display for BindVariablesError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BindVariablesError::VariableDoesNotExist(name) => {
+                write!(f, "variable {name} does not exist")
+            }
+        }
+    }
+}
+
 impl Emitter {
     pub fn new(rpn: Rpn) -> Self {
         let contains_variable = rpn.iter().any(|value| matches!(value, Value::Variable(_)));
@@ -66,19 +82,19 @@ impl Emitter {
     }
 
     /// replaces variable values with numbers
-    pub fn bind_variables(&mut self, var_map: &VariableMap) -> Result<(), String> {
+    pub fn bind_variables(&mut self, var_map: &VariableMap) -> Result<(), BindVariablesError> {
         self.no_var_rpn = Some(
             self.rpn
                 .iter()
                 .map(|value| match value {
-                    Value::Variable(name) => Ok(Value::Number(
-                        *var_map
-                            .get(name)
-                            .ok_or(format!("variable {name} does not exist"))?,
-                    )),
+                    Value::Variable(name) => {
+                        Ok(Value::Number(*var_map.get(name).ok_or(
+                            BindVariablesError::VariableDoesNotExist(name.to_owned()),
+                        )?))
+                    }
                     val => Ok(val.to_owned()),
                 })
-                .collect::<Result<Rpn, String>>()?,
+                .collect::<Result<Rpn, BindVariablesError>>()?,
         );
 
         Ok(())

@@ -1,5 +1,5 @@
 use crate::{
-    emitter::{EmitResult, Emitter, VariableMap},
+    emitter::{BindVariablesError, EmitResult, Emitter, VariableMap},
     parser::tokens_to_rpn,
     tokenizer::Tokenizer,
     EvalError, ParserError, TokenizerError,
@@ -55,7 +55,7 @@ impl Expression {
     /// Used to bind variables to numbers.
     /// Takes a hashmap as an argument where the keys are the variable names and the values are f32
     /// Not needed if expression doesn't have any variables.
-    pub fn bind_variables(&mut self, var_map: &VariableMap) -> Result<(), String> {
+    pub fn bind_variables(&mut self, var_map: &VariableMap) -> Result<(), BindVariablesError> {
         self.emitter.bind_variables(var_map)
     }
 

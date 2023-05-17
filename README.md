@@ -9,8 +9,12 @@ A library to parse logical and mathematical string expressions.
  - `<=`, `>=`, `<`, `>`, `=` - less than or equal, higher than or equal, less than, higher than, equals respectively
  - `{var_name}` - variable
  - `(`, `)` - parentheses for specifying order of operations
+ - numbers and boolean types
 
-Negative numbers are not supported.
+Not supported:
+ - negative numbers
+ - boolean variables, only f32
+
 
 ## TODO:
  - boolean values
