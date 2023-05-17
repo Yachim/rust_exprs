@@ -109,13 +109,7 @@ impl Tokenizer {
 
                     None
                 })
-                .ok_or(
-                    /*&format!(
-                        "No token matched\nindex: `{index}`\nstring: `{str}`\nsubstring: `{}`",
-                        &str[index..]
-                    )*/
-                    TokenizerError::NoTokenMatched(str[index..].to_owned()),
-                )?;
+                .ok_or(TokenizerError::NoTokenMatched(str[index..].to_owned()))?;
 
             index += captures
                 .get(0)
